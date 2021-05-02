@@ -1,5 +1,6 @@
 window.css = (() => {
 
+// compile sass-like js obj def to css string
 function compile(list) {
 
 	let code = "";
@@ -60,12 +61,14 @@ function compile(list) {
 
 }
 
+// add css to document
 function add(list) {
 	const el = document.createElement("style");
 	el.textContent = compile(list);
 	document.head.appendChild(el);
 }
 
+// set css var
 function setVar(name, val) {
 	document.documentElement.style.setProperty(name, val);
 }
