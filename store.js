@@ -1,5 +1,6 @@
 window.store = (() => {
 
+// deep nesting obj proxy with set handler
 function deepProxy(data, handler) {
 
 	return new Proxy(data, {
@@ -38,6 +39,7 @@ function deepProxy(data, handler) {
 
 }
 
+// hook deepProxy with storage-like JSON string container
 function storageProxy(host) {
 	return (name, initData) => {
 		if (!host[name]) {
@@ -52,6 +54,7 @@ function storageProxy(host) {
 const local = storageProxy(window.localStorage);
 const session = storageProxy(window.sessionStorage);
 
+// url hash helper
 function hash(initData) {
 	if (!window.location.hash) {
 		window.location.hash = initData;
@@ -73,6 +76,7 @@ function hash(initData) {
 	};
 }
 
+// url params helper
 function params() {
 	// TODO
 }
