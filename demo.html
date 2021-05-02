@@ -89,13 +89,19 @@ render(document.body, t(".app", {}, [
 			},
 		}, "add"),
 	]),
+	// if the children argument is a function, it's marked as dynamic
+	// and will get recomputed on redraw
 	t(".list", {}, () => {
 		return ldata["list"].map((item, i) => {
 			return t(".item", {}, [
 				t(".info", {}, [
 					t("input", {
 						type: "checkbox",
+						// if the prop value is a function, it's marked
+						// as dynamic and will get recomputed on redraw
 						checked: () => item.completed,
+						// redraws are only automatically triggered on
+						// user input like this
 						onchange(e) {
 							item.completed = e.target.checked;
 						},
