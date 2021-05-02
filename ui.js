@@ -4,6 +4,7 @@ const dynList = {};
 const domReg = {};
 let lastID = 0;
 
+// comp def shortcut
 function t(tag, props, children) {
 	return {
 		tag,
@@ -12,6 +13,7 @@ function t(tag, props, children) {
 	};
 }
 
+// compile a comp to DOM element and resolve dynamic content
 function compile(obj) {
 
 	// TODO: support shortcut for #id
@@ -43,25 +45,38 @@ function compile(obj) {
 	}
 
 	for (const key in obj.props) {
+
 		const val = obj.props[key];
-		if (key.startsWith("on") && typeof val === "function") {
-			el.addEventListener(key.substring(2), (e) => {
-				const res = val.call(el, e);
-				if (res !== false) {
-					redraw();
-				}
-			});
-		} else {
-			if (typeof val === "function") {
+
+		if (val == null) {
+			continue;
+		}
+
+		if (typeof val === "function") {
+
+			if (key.startsWith("on")) {
+				// event handler
+				el.addEventListener(key.substring(2), (e) => {
+					const res = val.call(el, e);
+					if (res !== false) {
+						redraw();
+					}
+				});
+			} else {
+				// dynamic prop
 				const makeVal = val.bind(el);
 				handlers.push(() => {
+					// TODO: is it worth it to diff here?
 					setProp(key, makeVal());
 				}),
 				setProp(key, makeVal());
-			} else {
-				setProp(key, val);
 			}
+
+		} else {
+			// static prop
+			setProp(key, val);
 		}
+
 	}
 
 	function setChildren(children) {
@@ -75,13 +90,14 @@ function compile(obj) {
 					render(el, child);
 				}
 			}
-		} else if (children !== undefined) {
+		} else if (children != null) {
 			el.textContent = children;
 		}
 	}
 
 	if (typeof obj.children === "function") {
 
+		// dynamic children
 		const makeChildren = obj.children.bind(el);
 		let prevChildren = makeChildren();
 
@@ -97,9 +113,11 @@ function compile(obj) {
 		setChildren(prevChildren);
 
 	} else {
+		// static children
 		setChildren(obj.children);
 	}
 
+	// only push to dyn list if have any dynamic stuff
 	if (handlers.length > 0) {
 		el._id = lastID++;
 		dynList[el._id] = handlers;
@@ -109,6 +127,7 @@ function compile(obj) {
 
 }
 
+// resolve everything in the dyn list
 function redraw() {
 	for (const id in dynList) {
 		for (const cb of dynList[id]) {
@@ -117,9 +136,10 @@ function redraw() {
 	}
 }
 
+// remove trashed elements in dyn list
 function cleanup(el) {
 	[...el.children].forEach(cleanup);
-	if (el._id) {
+	if (el._id != null) {
 		delete dynList[el._id];
 	}
 	if (el.id) {
@@ -127,6 +147,7 @@ function cleanup(el) {
 	}
 }
 
+// mount component to a DOM node
 function render(root, obj) {
 	if (Array.isArray(obj)) {
 		for (const c of obj) {
@@ -137,6 +158,12 @@ function render(root, obj) {
 	}
 }
 
+// internally managed shortcut to document.getElementByID
+function dom(name) {
+	return domReg[name];
+}
+
+// context-unaware deep equal as temp diff algo
 function deepEq(a, b) {
 
 	const ta = typeof a;
@@ -173,10 +200,6 @@ function deepEq(a, b) {
 
 	return true;
 
-}
-
-function dom(name) {
-	return domReg[name];
 }
 
 return {
