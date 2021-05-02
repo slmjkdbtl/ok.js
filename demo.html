@@ -1,0 +1,119 @@
+<html>
+
+<head>
+	<meta charset="utf-8">
+</head>
+
+<body>
+	<script src="ui.js"></script>
+	<script src="css.js"></script>
+	<script src="store.js"></script>
+	<script>
+
+css.add({
+	".app": {
+		"width": "240px",
+		"> .inputbar": {
+			"width": "100%",
+			"display": "flex",
+			"flex-direction": "row",
+			"justify-content": "space-between",
+		},
+		"> .list": {
+			"width": "100%",
+			"> .item": {
+				"> .info": {
+					"display": "flex",
+					"flex-direction": "row",
+					"> .title": {
+						"cursor": "pointer",
+						"user-select": "none",
+						"&.crossed": {
+							"text-decoration": "line-through",
+						},
+					},
+				},
+				"display": "flex",
+				"flex-direction": "row",
+				"justify-content": "space-between",
+				"width": "100%",
+				"> .delete": {
+					"display": "none",
+				},
+				":hover > .delete": {
+					"display": "block",
+				},
+			},
+		},
+	},
+});
+
+const session = {
+	input: "",
+};
+
+const data = store.local("todo", []);
+const { t, render, } = ui();
+
+function add(title) {
+	if (session.input) {
+		data.unshift({
+			title: session.input,
+			completed: false,
+		});
+	}
+	session.input = "";
+}
+
+render(document.body, t(".app", {}, [
+	t(".inputbar", {}, [
+		t("input", {
+			placeholder: "enter your new task",
+			value: () => session.input,
+			onkeyup(e) {
+				if (e.key === "Enter") {
+					add();
+				}
+			},
+			oninput(e) {
+				session.input = e.target.value;
+			},
+		}),
+		t("button", {
+			onclick() {
+				add();
+			},
+		}, "add"),
+	]),
+	t(".list", {}, () => {
+		return data.map((item, i) => {
+			return t(".item", {}, [
+				t(".info", {}, [
+					t("input", {
+						type: "checkbox",
+						checked: () => item.completed,
+						onchange(e) {
+							item.completed = e.target.checked;
+						},
+					}),
+					t(".title", {
+						onclick() {
+							item.completed = !item.completed;
+						},
+						class: [ item.completed && "crossed", ],
+					}, item.title),
+				]),
+				t("button.delete", {
+					onclick() {
+						data.splice(i, 1);
+					},
+				}, "delete"),
+			]);
+		})
+	}),
+]));
+
+	</script>
+</body>
+
+</html>
