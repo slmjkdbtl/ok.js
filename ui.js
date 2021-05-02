@@ -58,6 +58,7 @@ function compile(obj) {
 				// event handler
 				el.addEventListener(key.substring(2), (e) => {
 					const res = val.call(el, e);
+					// auto redraw on any event unless explicitly tells not
 					if (res !== false) {
 						redraw();
 					}
