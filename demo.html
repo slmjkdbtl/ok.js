@@ -1,6 +1,7 @@
 <html>
 
 <head>
+	<title>todo</title>
 	<meta charset="utf-8">
 </head>
 
@@ -48,35 +49,38 @@ css.add({
 	},
 });
 
-const session = {
+const sdata = store.session("todo", {
 	input: "",
-};
+});
 
-const data = store.local("todo", []);
+const ldata = store.local("todo", {
+	list: [],
+});
+
 const { t, render, } = ui();
 
 function add(title) {
-	if (session.input) {
-		data.unshift({
-			title: session.input,
+	if (sdata.input) {
+		ldata["list"].unshift({
+			title: sdata.input,
 			completed: false,
 		});
 	}
-	session.input = "";
+	sdata.input = "";
 }
 
 render(document.body, t(".app", {}, [
 	t(".inputbar", {}, [
 		t("input", {
 			placeholder: "enter your new task",
-			value: () => session.input,
+			value: () => sdata.input,
 			onkeyup(e) {
 				if (e.key === "Enter") {
 					add();
 				}
 			},
 			oninput(e) {
-				session.input = e.target.value;
+				sdata.input = e.target.value;
 			},
 		}),
 		t("button", {
@@ -86,7 +90,7 @@ render(document.body, t(".app", {}, [
 		}, "add"),
 	]),
 	t(".list", {}, () => {
-		return data.map((item, i) => {
+		return ldata["list"].map((item, i) => {
 			return t(".item", {}, [
 				t(".info", {}, [
 					t("input", {
@@ -105,7 +109,7 @@ render(document.body, t(".app", {}, [
 				]),
 				t("button.delete", {
 					onclick() {
-						data.splice(i, 1);
+						ldata["list"].splice(i, 1);
 					},
 				}, "delete"),
 			]);
