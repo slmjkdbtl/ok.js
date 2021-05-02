@@ -1,7 +1,8 @@
 window.ui = () => {
 
-let handlers = [];
+const dynList = {};
 const domReg = {};
+let lastID = 0;
 
 function t(tag, props, children) {
 	return {
@@ -11,12 +12,13 @@ function t(tag, props, children) {
 	};
 }
 
-// TODO: support id
 function compile(obj) {
 
+	// TODO: support shortcut for #id
 	const segs = obj.tag.split(".");
 	const el = document.createElement(segs[0] || "div");
 	const className = segs[1] ? segs.splice(1).join(" ") : "";
+	const handlers = [];
 
 	if (className) {
 		el.className = className;
@@ -32,10 +34,11 @@ function compile(obj) {
 			for (const s in v) {
 				el.style[s] = v[s];
 			}
-		} else if (k === "dom") {
-			domReg[v] = el;
 		} else {
 			el[k] = v;
+			if (k === "id") {
+				domReg[v] = el;
+			}
 		}
 	}
 
@@ -51,10 +54,9 @@ function compile(obj) {
 		} else {
 			if (typeof val === "function") {
 				const makeVal = val.bind(el);
-				handlers.push({
-					el: el,
-					cb: () => setProp(key, makeVal()),
-				});
+				handlers.push(() => {
+					setProp(key, makeVal());
+				}),
 				setProp(key, makeVal());
 			} else {
 				setProp(key, val);
@@ -83,16 +85,13 @@ function compile(obj) {
 		const makeChildren = obj.children.bind(el);
 		let prevChildren = makeChildren();
 
-		handlers.push({
-			el: el,
-			cb: () => {
-				const children = makeChildren();
-				// TODO: more sophisticated diff
-				if (!deepEq(children, prevChildren)) {
-					setChildren(children);
-				}
-				prevChildren = children;
-			},
+		handlers.push(() => {
+			const children = makeChildren();
+			// TODO: more sophisticated diff
+			if (!deepEq(children, prevChildren)) {
+				setChildren(children);
+			}
+			prevChildren = children;
 		});
 
 		setChildren(prevChildren);
@@ -101,13 +100,31 @@ function compile(obj) {
 		setChildren(obj.children);
 	}
 
+	if (handlers.length > 0) {
+		el._id = lastID++;
+		dynList[el._id] = handlers;
+	}
+
 	return el;
 
 }
 
+function redraw() {
+	for (const id in dynList) {
+		for (const cb of dynList[id]) {
+			cb();
+		}
+	}
+}
+
 function cleanup(el) {
 	[...el.children].forEach(cleanup);
-	handlers = handlers.filter((h) => h.el !== el);
+	if (el._id) {
+		delete dynList[el._id];
+	}
+	if (el.id) {
+		delete domReg[el.id];
+	}
 }
 
 function render(root, obj) {
@@ -156,12 +173,6 @@ function deepEq(a, b) {
 
 	return true;
 
-}
-
-function redraw() {
-	for (const handler of handlers) {
-		handler.cb();
-	}
 }
 
 function dom(name) {

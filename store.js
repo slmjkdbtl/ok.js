@@ -1,58 +1,87 @@
 window.store = (() => {
 
-function make(host) {
+function deepProxy(data, handler) {
 
-	return (name, initData) => {
+	return new Proxy(data, {
 
-		if (!host[name]) {
-			host[name] = JSON.stringify(initData);
-		}
+		get(obj, key) {
 
-		return new Proxy(JSON.parse(host[name]), {
-
-			get(obj, key) {
-
-				function setter(obj2, key2, val2) {
-					obj2[key2] = val2;
-					host[name] = JSON.stringify(obj);
-					return true;
-				}
-
-				function getter(obj2, key2) {
-					const val = obj2[key2];
-					if (typeof val === "object" && val !== null) {
-						return new Proxy(val, {
-							get: getter,
-							set: setter,
-						});
-					} else {
-						return val;
-					}
-				}
-
-				return getter(obj, key);
-
-			},
-
-			set(obj, key, val) {
-				obj[key] = val;
-				host[name] = JSON.stringify(obj);
+			function setter(obj2, key2, val2) {
+				obj2[key2] = val2;
+				handler(obj);
 				return true;
-			},
+			}
 
-		});
+			function getter(obj2, key2) {
+				const val = obj2[key2];
+				if (typeof val === "object" && val !== null) {
+					return new Proxy(val, {
+						get: getter,
+						set: setter,
+					});
+				} else {
+					return val;
+				}
+			}
 
-	};
+			return getter(obj, key);
+
+		},
+
+		set(obj, key, val) {
+			obj[key] = val;
+			handler(obj);
+			return true;
+		},
+
+	});
 
 }
 
-const local = make(window.localStorage);
-const session = make(window.sessionStorage);
+function storageProxy(host) {
+	return (name, initData) => {
+		if (!host[name]) {
+			host[name] = JSON.stringify(initData);
+		}
+		return deepProxy(JSON.parse(host[name]), (obj) => {
+			host[name] = JSON.stringify(obj);
+		});
+	};
+}
+
+const local = storageProxy(window.localStorage);
+const session = storageProxy(window.sessionStorage);
+
+function hash(initData) {
+	if (!window.location.hash) {
+		window.location.hash = initData;
+	}
+	let isNum = typeof initData === "number";
+	return {
+		get() {
+			const hash = window.location.hash.substring(1);
+			if (isNum) {
+				return Number(hash);
+			} else {
+				return hash;
+			}
+		},
+		set(val) {
+			window.location.hash = val;
+			isNum = typeof val === "number";
+		},
+	};
+}
+
+function params() {
+	// TODO
+}
 
 return {
 	local,
 	session,
-	make,
+	hash,
+	params,
 };
 
 })();
