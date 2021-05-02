@@ -82,10 +82,6 @@ function compile(obj) {
 
 	function setChildren(children) {
 		if (Array.isArray(children)) {
-			while (el.firstChild) {
-				cleanup(el.firstChild);
-				el.removeChild(el.firstChild);
-			}
 			for (const child of children) {
 				if (child) {
 					render(el, child);
@@ -102,14 +98,80 @@ function compile(obj) {
 		const makeChildren = obj.children.bind(el);
 		let prevChildren = makeChildren();
 
-		handlers.push(() => {
-			const children = makeChildren();
-			// TODO: more sophisticated diff
-			if (!deepEq(children, prevChildren)) {
-				setChildren(children);
-			}
-			prevChildren = children;
-		});
+		if (typeof prevChildren === "string") {
+
+			handlers.push(() => {
+				const newChildren = makeChildren();
+				if (newChildren !== prevChildren) {
+					el.textContent = newChildren;
+				}
+				prevstr = newChildren;
+			});
+
+		} else {
+
+			let prevKeys = prevChildren.map((c) => c.props.key);
+
+			// TODO: deal with no key situation
+			handlers.push(() => {
+
+				const newChildren = makeChildren();
+				const newKeys = newChildren.map((c) => c.props.key);
+
+				if (deepEq(prevKeys, newKeys)) {
+					return;
+				}
+
+				const prevMap = {};
+
+				prevChildren.forEach((c, i) => {
+					prevMap[c.props.key] = {
+						idx: i,
+						el: el.children[i],
+						comp: c,
+					};
+				});
+
+				let offset = 0;
+
+				// insert dom node
+				function insertAt(child, idx = 0) {
+					if (idx >= el.children.length) {
+						el.appendChild(child);
+					} else {
+						el.insertBefore(child, el.children[idx]);
+					}
+				}
+
+				// diff
+				newChildren.forEach((child, i) => {
+					if (child == null) {
+						return;
+					}
+					if (prevMap[child.props.key]) {
+						const cel = prevMap[child.props.key];
+						if (cel.idx + offset !== i) {
+							insertAt(cel.el, i);
+						}
+						// TODO: update all handlers of children
+					} else {
+						insertAt(compile(child), i);
+						offset++;
+					}
+				});
+
+				// remove left over children
+				for (let i = newChildren.length; i < el.children.length; i++) {
+					cleanup(el.children[i]);
+					el.removeChild(el.children[i]);
+				}
+
+				prevKeys = newKeys;
+				prevChildren = newChildren;
+
+			});
+
+		}
 
 		setChildren(prevChildren);
 
