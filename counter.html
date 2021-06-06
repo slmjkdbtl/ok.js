@@ -1,0 +1,25 @@
+<html>
+
+<head>
+	<title>todo</title>
+	<meta charset="utf-8">
+</head>
+
+<body>
+	<script src="ui.js"></script>
+	<script>
+
+const t = ui.t;
+let counter = ui.state(0);
+
+setInterval(() => {
+	counter.set(c => c + 1);
+}, 100);
+
+ui.render(document.body, t("div", {}, counter.map((c) => c + " clicks")));
+
+	</script>
+</body>
+
+</html>
+

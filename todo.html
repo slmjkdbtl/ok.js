@@ -1,0 +1,121 @@
+<html>
+
+<head>
+	<title>todo</title>
+	<meta charset="utf-8">
+</head>
+
+<body>
+	<script src="ui.js"></script>
+	<script src="css.js"></script>
+	<script src="store.js"></script>
+	<script>
+
+css.add({
+	".app": {
+		"width": "240px",
+		"> .inputbar": {
+			"width": "100%",
+			"display": "flex",
+			"flex-direction": "row",
+			"justify-content": "space-between",
+		},
+		"> .list": {
+			"width": "100%",
+			"> .item": {
+				"display": "flex",
+				"flex-direction": "row",
+				"justify-content": "space-between",
+				"width": "100%",
+				"> .info": {
+					"display": "flex",
+					"flex-direction": "row",
+					"> .title": {
+						"cursor": "pointer",
+						"user-select": "none",
+						"&.crossed": {
+							"text-decoration": "line-through",
+						},
+					},
+				},
+				"> .delete": {
+					"display": "none",
+				},
+				":hover > .delete": {
+					"display": "block",
+				},
+			},
+		},
+	},
+});
+
+const uid = (() => {
+	let id = 0;
+	return () => id++;
+})();
+
+const t = ui.t;
+const todos = ui.state([]);
+let input = ui.state("");
+
+function add() {
+	todos.set([
+		...todos.get(),
+		{
+			title: input.get(),
+			completed: false,
+		},
+	]);
+	input.set("");
+}
+
+ui.render(document.body, t(".app", {}, [
+	t(".inputbar", {}, [
+		t("input", {
+			placeholder: "enter your new task",
+			value: input,
+			onkeyup(e) {
+				if (e.key === "Enter") {
+					add();
+				}
+			},
+			oninput(e) {
+				input.set(e.target.value);
+			},
+		}),
+		t("button", {
+			onclick: add,
+		}, "add"),
+	]),
+	t(".list", {}, todos.every((item, idx) => {
+		return t(".item", {}, [
+			t(".info", {}, [
+				t("input", {
+					type: "checkbox",
+					checked: item.completed,
+					onchange(e) {
+						item.completed = e.target.checked;
+						todos.pub();
+					},
+				}),
+				t(".title", {
+					onclick() {
+						item.completed = !item.completed;
+						todos.pub();
+					},
+					classes: [ item.completed && "crossed" ],
+				}, item.title),
+			]),
+			t("button.delete", {
+				onclick() {
+					todos.set(todos.get().filter((_, idx2) => idx2 !== idx));
+				},
+			}, "delete"),
+		]);
+	})),
+]));
+
+	</script>
+</body>
+
+</html>

@@ -1,8 +1,6 @@
-window.ui = () => {
+window.ui = (() => {
 
-const dynList = {};
 const domReg = {};
-let lastID = 0;
 
 // comp def shortcut
 function t(tag, props, children) {
@@ -13,34 +11,37 @@ function t(tag, props, children) {
 	};
 }
 
-// compile a comp to DOM element and resolve dynamic content
+// compile a comp to dom element and resolve dynamic content
 function compile(obj) {
 
 	// TODO: support shortcut for #id
 	const segs = obj.tag.split(".");
 	const el = document.createElement(segs[0] || "div");
 	const className = segs[1] ? segs.splice(1).join(" ") : "";
-	const handlers = [];
+
+	el._cleanUps = [];
 
 	if (className) {
 		el.className = className;
 	}
 
 	function setProp(k, v) {
-		if (k === "class") {
+		if (k === "classes") {
 			el.className = v.join(" ");
 			if (className) {
 				el.className += " " + className;
 			}
-		} else if (k === "style") {
+		} else if (k === "styles") {
 			for (const s in v) {
 				el.style[s] = v[s];
 			}
+		} else if (k === "dom") {
+			domReg[v] = el;
+			el._cleanUps.push(() => {
+				delete domReg[v];
+			});
 		} else {
 			el[k] = v;
-			if (k === "id") {
-				domReg[v] = el;
-			}
 		}
 	}
 
@@ -52,27 +53,11 @@ function compile(obj) {
 			continue;
 		}
 
-		if (typeof val === "function") {
-
-			if (key.startsWith("on")) {
-				// event handler
-				el.addEventListener(key.substring(2), (e) => {
-					const res = val.call(el, e);
-					// auto redraw on any event unless explicitly tells not
-					if (res !== false) {
-						redraw();
-					}
-				});
-			} else {
-				// dynamic prop
-				const makeVal = val.bind(el);
-				handlers.push(() => {
-					// TODO: is it worth it to diff here?
-					setProp(key, makeVal());
-				}),
-				setProp(key, makeVal());
-			}
-
+		if (val._isState) {
+			setProp(key, val.get());
+			el._cleanUps.push(val.sub((data) => {
+				setProp(key, data);
+			}));
 		} else {
 			// static prop
 			setProp(key, val);
@@ -80,137 +65,45 @@ function compile(obj) {
 
 	}
 
-	function setChildren(children) {
-		if (Array.isArray(children)) {
-			for (const child of children) {
-				if (child) {
-					render(el, child);
+	if (obj.children != null) {
+
+		function setChildren(children) {
+			const ty = typeof children;
+			if (Array.isArray(children)) {
+				while (el.firstChild) {
+					for (const cleanUp of el.firstChild._cleanUps) {
+						cleanUp();
+					}
+					el.removeChild(el.firstChild);
 				}
+				for (const child of children) {
+					if (child) {
+						render(el, child);
+					}
+				}
+			} else if (ty === "string" || ty === "number") {
+				el.textContent = children;
+			} else {
+				throw new Error(`invalid children type: ${ty}`);
 			}
-		} else if (children != null) {
-			el.textContent = children;
 		}
-	}
 
-	if (typeof obj.children === "function") {
-
-		// dynamic children
-		const makeChildren = obj.children.bind(el);
-		let prevChildren = makeChildren();
-
-		if (typeof prevChildren === "string") {
-
-			handlers.push(() => {
-				const newChildren = makeChildren();
-				if (newChildren !== prevChildren) {
-					el.textContent = newChildren;
-				}
-				prevstr = newChildren;
-			});
-
+		if (obj.children._isState) {
+			setChildren(obj.children.get());
+			el._cleanUps.push(obj.children.sub((data) => {
+				setChildren(data);
+			}));
 		} else {
-
-			let prevKeys = prevChildren.map((c) => c.props.key);
-
-			// TODO: deal with no key situation
-			handlers.push(() => {
-
-				const newChildren = makeChildren();
-				const newKeys = newChildren.map((c) => c.props.key);
-
-				if (deepEq(prevKeys, newKeys)) {
-					return;
-				}
-
-				const prevMap = {};
-
-				prevChildren.forEach((c, i) => {
-					prevMap[c.props.key] = {
-						idx: i,
-						el: el.children[i],
-						comp: c,
-					};
-				});
-
-				let offset = 0;
-
-				// insert dom node
-				function insertAt(child, idx = 0) {
-					if (idx >= el.children.length) {
-						el.appendChild(child);
-					} else {
-						el.insertBefore(child, el.children[idx]);
-					}
-				}
-
-				// diff
-				newChildren.forEach((child, i) => {
-					if (child == null) {
-						return;
-					}
-					if (prevMap[child.props.key]) {
-						const cel = prevMap[child.props.key];
-						if (cel.idx + offset !== i) {
-							insertAt(cel.el, i);
-						}
-						// TODO: update all handlers of children
-					} else {
-						insertAt(compile(child), i);
-						offset++;
-					}
-				});
-
-				// remove left over children
-				for (let i = newChildren.length; i < el.children.length; i++) {
-					cleanup(el.children[i]);
-					el.removeChild(el.children[i]);
-				}
-
-				prevKeys = newKeys;
-				prevChildren = newChildren;
-
-			});
-
+			// static children
+			setChildren(obj.children);
 		}
 
-		setChildren(prevChildren);
-
-	} else {
-		// static children
-		setChildren(obj.children);
-	}
-
-	// only push to dyn list if have any dynamic stuff
-	if (handlers.length > 0) {
-		el._id = lastID++;
-		dynList[el._id] = handlers;
 	}
 
 	return el;
 
 }
 
-// resolve everything in the dyn list
-function redraw() {
-	for (const id in dynList) {
-		for (const cb of dynList[id]) {
-			cb();
-		}
-	}
-}
-
-// remove trashed elements in dyn list
-function cleanup(el) {
-	[...el.children].forEach(cleanup);
-	if (el._id != null) {
-		delete dynList[el._id];
-	}
-	if (el.id) {
-		delete domReg[el.id];
-	}
-}
-
-// mount component to a DOM node
 function render(root, obj) {
 	if (Array.isArray(obj)) {
 		for (const c of obj) {
@@ -226,50 +119,61 @@ function dom(name) {
 	return domReg[name];
 }
 
-// context-unaware deep equal as temp diff algo
-function deepEq(a, b) {
+function state(data) {
 
-	const ta = typeof a;
-	const tb = typeof b;
+	const ty = typeof data;
+	const subs = {};
+	let lastSubID = 0;
 
-	if (ta !== tb) {
-		return false;
-	}
-
-	if (ta === "function" && tb === "function") {
-		return a.toString() === b.toString();
-	}
-
-	if (a === null && b === null) {
-		return true;
-	}
-
-	if (ta !== "object" && tb !== "object") {
-		return a === b;
-	}
-
-	const ka = Object.keys(a);
-	const kb = Object.keys(b);
-
-	if (ka.length !== kb.length) {
-		return false;
-	}
-
-	for (const k in a) {
-		if (!deepEq(a[k], b[k])) {
-			return false;
-		}
-	}
-
-	return true;
-
+	return {
+		_isState: true,
+		set(val) {
+			const ty2 = typeof val;
+			switch (ty2) {
+				case "function":
+					this.set(val(data));
+					break;
+				case ty:
+					data = val;
+					this.pub();
+					break;
+				default:
+					throw new Error(`expected ${ty}, found ${ty2}`);
+			}
+		},
+		get() {
+			return data;
+		},
+		sub(cb) {
+			const id = lastSubID++;
+			subs[id] = cb;
+			return () => {
+				delete subs[id];
+			};
+		},
+		pub() {
+			for (const id in subs) {
+				subs[id](data);
+			}
+		},
+		map(f) {
+			const state2 = state(f(data));
+			this.sub((data2) => {
+				state2.set(f(data2));
+			});
+			return state2;
+		},
+		every(f) {
+			return this.map((data2) => data2.map(f));
+		},
+	};
 }
 
 return {
 	t,
 	render,
-	redraw,
 	dom,
+	state,
 };
 
-};
+})();
