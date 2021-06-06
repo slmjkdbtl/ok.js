@@ -59,9 +59,7 @@ function compile(obj) {
 
 	el._cleanup = () => {
 		[...el.children].forEach((c) => c._cleanup());
-		for (const cb of cleanups) {
-			cb();
-		}
+		cleanups.forEach((cb) => cb());
 	};
 
 	function setProp(k, v) {
@@ -146,15 +144,16 @@ function compile(obj) {
 // render a vdom to dom
 function render(root, obj) {
 	if (Array.isArray(obj)) {
-		for (const c of obj) {
-			render(root, c);
-		}
+		const cleanups = obj.map((o) => render(root, o));
+		return () => cleanups.forEach((cb) => cb());
 	} else {
-		root.appendChild(compile(obj));
+		const el = compile(obj);
+		root.appendChild(el);
+		return () => {
+			el._cleanup();
+			root.removeChild(el);
+		};
 	}
-	return () => {
-		// TODO: clean up
-	};
 }
 
 // internally managed shortcut to document.getElementByID
