@@ -123,25 +123,18 @@ function dom(name) {
 // reactive state
 function state(data) {
 
-	const ty = typeof data;
 	const subs = {};
 	let lastSubID = 0;
 
 	return {
 		_isState: true,
 		set(val) {
-			const ty2 = typeof val;
-			switch (ty2) {
-				case "function":
-					this.set(val(data));
-					break;
-				case ty:
-					data = val;
-					this.pub();
-					break;
-				default:
-					throw new Error(`expected ${ty}, found ${ty2}`);
+			if (typeof val === "function") {
+				this.set(val(data));
+				return;
 			}
+			data = val;
+			this.pub();
 		},
 		get() {
 			return data;
@@ -167,20 +160,10 @@ function state(data) {
 		},
 		every(f) {
 			if (!Array.isArray(data)) {
-				throw new Error(`every() only exists on arrays, found ${ty}`);
+				throw new Error(`every() only exists on arrays, found ${typeof data}`);
 			}
 			return this.map((data2) => data2.map(f));
 		},
-		deep() {
-			if (ty !== "object") {
-				throw new Error(`deep() only exists on objects, found ${ty}`);
-			}
-			if (Array.isArray(data)) {
-				// TODO
-			} else {
-				// TODO
-			}
-		}
 	};
 
 }
