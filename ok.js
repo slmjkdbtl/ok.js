@@ -11,33 +11,73 @@ function t(tag, props, children) {
 	};
 }
 
+function parseTag(tag) {
+
+	const parts = tag.split(/([#\.][^#\.]+)/).filter(c => c);
+
+	const info = {
+		el: "div",
+		id: null,
+		classes: [],
+	};
+
+	parts.forEach((p, i) => {
+		if (p.startsWith("#")) {
+			if (info.id) {
+				throw new Error(`duplicate id: ${p}`);
+			}
+			info.id = p.substring(1);
+		} else if (p.startsWith(".")) {
+			info.classes.push(p.substring(1));
+		} else {
+			if (i === 0) {
+				info.el = p;
+			}
+		}
+	});
+
+	return info;
+
+}
+
 // compile a vdom to dom and resolve reactive content
 function compile(obj) {
 
-	// TODO: support shortcut for #id
-	const segs = obj.tag.split(".");
-	const el = document.createElement(segs[0] || "div");
-	const className = segs[1] ? segs.splice(1).join(" ") : "";
+	const info = parseTag(obj.tag);
+	const el = document.createElement(info.el);
+	const className = info.classes.join(" ");
 
-	el._cleanUps = [];
+	if (info.id) {
+		el.id = info.id;
+	}
 
 	if (className) {
 		el.className = className;
 	}
 
+	const cleanups = [];
+
+	el._cleanup = () => {
+		[...el.children].forEach((c) => c._cleanup());
+		for (const cb of cleanups) {
+			cb();
+		}
+	};
+
 	function setProp(k, v) {
 		if (k === "classes") {
-			el.className = v.join(" ");
-			if (className) {
-				el.className += " " + className;
+			const names = v.filter(c => c).join(" ");
+			el.className = className;
+			if (names) {
+				el.className += " " + names;
 			}
 		} else if (k === "styles") {
 			for (const s in v) {
-				el.style[s] = v[s];
+				el.style.setProperty(s, v[s]);
 			}
 		} else if (k === "dom") {
 			domReg[v] = el;
-			el._cleanUps.push(() => {
+			cleanups.push(() => {
 				delete domReg[v];
 			});
 		} else {
@@ -55,7 +95,7 @@ function compile(obj) {
 
 		if (val._isState) {
 			setProp(key, val.get());
-			el._cleanUps.push(val.sub((data) => {
+			cleanups.push(val.sub((data) => {
 				setProp(key, data);
 			}));
 		} else {
@@ -70,10 +110,9 @@ function compile(obj) {
 		function setChildren(children) {
 			const ty = typeof children;
 			if (Array.isArray(children)) {
+				// TODO: list diff
 				while (el.firstChild) {
-					for (const cleanUp of el.firstChild._cleanUps) {
-						cleanUp();
-					}
+					el.firstChild._cleanup();
 					el.removeChild(el.firstChild);
 				}
 				for (const child of children) {
@@ -90,7 +129,7 @@ function compile(obj) {
 
 		if (obj.children._isState) {
 			setChildren(obj.children.get());
-			el._cleanUps.push(obj.children.sub((data) => {
+			cleanups.push(obj.children.sub((data) => {
 				setChildren(data);
 			}));
 		} else {
@@ -113,6 +152,9 @@ function render(root, obj) {
 	} else {
 		root.appendChild(compile(obj));
 	}
+	return () => {
+		// TODO: clean up
+	};
 }
 
 // internally managed shortcut to document.getElementByID

@@ -16,15 +16,15 @@ const {
 } = ok;
 
 css({
-	".app": {
+	"#app": {
 		"width": "240px",
-		"> .inputbar": {
+		"> #inputbar": {
 			"width": "100%",
 			"display": "flex",
 			"flex-direction": "row",
 			"justify-content": "space-between",
 		},
-		"> .list": {
+		"> #list": {
 			"width": "100%",
 			"> .item": {
 				"display": "flex",
@@ -98,8 +98,8 @@ function add() {
 	input.set("");
 }
 
-render(document.body, t(".app", {}, [
-	t(".inputbar", {}, [
+render(document.body, t("#app", {}, [
+	t("#inputbar", {}, [
 		t("input", {
 			placeholder: "enter your new task",
 			value: input,
@@ -116,7 +116,7 @@ render(document.body, t(".app", {}, [
 			onclick: add,
 		}, "add"),
 	]),
-	t(".list", {}, todos.every((item, idx) => {
+	t("#list", {}, todos.every((item, idx) => {
 		return t(".item", {}, [
 			t(".info", {}, [
 				t("input", {
