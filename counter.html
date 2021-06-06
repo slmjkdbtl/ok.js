@@ -7,16 +7,21 @@
 
 <body>
 	<script src="ok.js"></script>
-<script>
+	<script>
 
-const t = ok.t;
-let counter = ok.state(0);
+const {
+	t,
+	render,
+	state,
+} = ok;
 
-setInterval(() => {
-	counter.set(c => c + 1);
-}, 100);
+const counter = state(0);
 
-ok.render(document.body, t("div", {}, counter.map((c) => c + " clicks")));
+render(document.body, t("button", {
+	onclick() {
+		counter.set((c) => c + 1);
+	},
+}, counter.map((c) => c + " clicks")));
 
 	</script>
 </body>

@@ -160,15 +160,29 @@ function state(data) {
 		},
 		map(f) {
 			const state2 = state(f(data));
-			this.sub((data2) => {
+			state2.unmap = this.sub((data2) => {
 				state2.set(f(data2));
 			});
 			return state2;
 		},
 		every(f) {
+			if (!Array.isArray(data)) {
+				throw new Error(`every() only exists on arrays, found ${ty}`);
+			}
 			return this.map((data2) => data2.map(f));
 		},
+		deep() {
+			if (ty !== "object") {
+				throw new Error(`deep() only exists on objects, found ${ty}`);
+			}
+			if (Array.isArray(data)) {
+				// TODO
+			} else {
+				// TODO
+			}
+		}
 	};
+
 }
 
 // compile sass-like js obj def to css string

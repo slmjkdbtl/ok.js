@@ -9,7 +9,14 @@
 	<script src="ok.js"></script>
 	<script>
 
-ok.css({
+const {
+	t,
+	css,
+	render,
+	state,
+} = ok;
+
+css({
 	".app": {
 		"width": "240px",
 		"> .inputbar": {
@@ -47,11 +54,24 @@ ok.css({
 	},
 });
 
-const t = ok.t;
-const todos = ok.state([]);
-let input = ok.state("");
+const todos = state((() => {
+	if (localStorage["todo"]) {
+		return JSON.parse(localStorage["todo"]);
+	} else {
+		return [];
+	}
+})());
+
+todos.sub((data) => {
+	localStorage["todo"] = JSON.stringify(data);
+});
+
+const input = state("");
 
 function add() {
+	if (!input.get()) {
+		return;
+	}
 	todos.set([
 		...todos.get(),
 		{
@@ -62,7 +82,7 @@ function add() {
 	input.set("");
 }
 
-ok.render(document.body, t(".app", {}, [
+render(document.body, t(".app", {}, [
 	t(".inputbar", {}, [
 		t("input", {
 			placeholder: "enter your new task",
