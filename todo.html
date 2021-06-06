@@ -6,12 +6,10 @@
 </head>
 
 <body>
-	<script src="ui.js"></script>
-	<script src="css.js"></script>
-	<script src="store.js"></script>
+	<script src="ok.js"></script>
 	<script>
 
-css.add({
+ok.css({
 	".app": {
 		"width": "240px",
 		"> .inputbar": {
@@ -49,14 +47,9 @@ css.add({
 	},
 });
 
-const uid = (() => {
-	let id = 0;
-	return () => id++;
-})();
-
-const t = ui.t;
-const todos = ui.state([]);
-let input = ui.state("");
+const t = ok.t;
+const todos = ok.state([]);
+let input = ok.state("");
 
 function add() {
 	todos.set([
@@ -69,7 +62,7 @@ function add() {
 	input.set("");
 }
 
-ui.render(document.body, t(".app", {}, [
+ok.render(document.body, t(".app", {}, [
 	t(".inputbar", {}, [
 		t("input", {
 			placeholder: "enter your new task",
