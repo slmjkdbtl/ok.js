@@ -1,3 +1,5 @@
+// wengwengweng
+
 window.ok = (() => {
 
 const domReg = {};
@@ -13,7 +15,9 @@ function t(tag, props, children) {
 
 function parseTag(tag) {
 
-	const parts = tag.split(/([#\.][^#\.]+)/).filter(c => c);
+	const parts = tag
+		.split(/([#\.][^#\.]+)/)
+		.filter((c) => c.length > 0);
 
 	const info = {
 		el: "div",
@@ -41,7 +45,7 @@ function parseTag(tag) {
 }
 
 // compile a vdom to dom and resolve reactive content
-function compile(obj) {
+function compileEl(obj) {
 
 	const info = parseTag(obj.tag);
 	const el = document.createElement(info.el);
@@ -62,10 +66,15 @@ function compile(obj) {
 		cleanups.forEach((cb) => cb());
 	};
 
+	el._destroy = () => {
+		el._cleanup();
+		el.remove();
+	};
+
 	function setProp(k, v) {
 		if (k === "classes") {
-			const names = v.filter(c => c).join(" ");
 			el.className = className;
+			const names = v.filter(c => c).join(" ");
 			if (names) {
 				el.className += " " + names;
 			}
@@ -109,19 +118,14 @@ function compile(obj) {
 			const ty = typeof children;
 			if (Array.isArray(children)) {
 				// TODO: list diff
-				while (el.firstChild) {
-					el.firstChild._cleanup();
-					el.removeChild(el.firstChild);
-				}
+				[...el.children].forEach((c) => c._destroy());
 				for (const child of children) {
 					if (child) {
 						render(el, child);
 					}
 				}
-			} else if (ty === "string" || ty === "number") {
-				el.textContent = children;
 			} else {
-				throw new Error(`invalid children type: ${ty}`);
+				el.textContent = children;
 			}
 		}
 
@@ -147,12 +151,9 @@ function render(root, obj) {
 		const cleanups = obj.map((o) => render(root, o));
 		return () => cleanups.forEach((cb) => cb());
 	} else {
-		const el = compile(obj);
-		root.appendChild(el);
-		return () => {
-			el._cleanup();
-			root.removeChild(el);
-		};
+		const el = compileEl(obj);
+		root.append(el);
+		return () => el._destroy();
 	}
 }
 
@@ -194,7 +195,8 @@ function state(data) {
 		},
 		map(f) {
 			const state2 = state(f(data));
-			state2.unmap = this.sub((data2) => {
+			// TODO: clean up when state2 isn't around
+			const unsub = this.sub((data2) => {
 				state2.set(f(data2));
 			});
 			return state2;
@@ -274,7 +276,7 @@ function compileCSS(list) {
 function css(list) {
 	const el = document.createElement("style");
 	el.textContent = compileCSS(list);
-	document.head.appendChild(el);
+	document.head.append(el);
 }
 
 // deep nesting obj proxy with set handler
@@ -358,6 +360,11 @@ function params() {
 	// TODO
 }
 
+const uid = (() => {
+	let id = 0;
+	return () => id++;
+})();
+
 return {
 	t,
 	render,
@@ -367,6 +374,8 @@ return {
 	lstore,
 	sstore,
 	hash,
+	params,
+	uid,
 };
 
 })();
