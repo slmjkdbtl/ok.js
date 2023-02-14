@@ -122,7 +122,7 @@ function compileEl(obj) {
 					}
 				}
 			} else {
-				el.innerHTML = children
+				el.textContent = children
 			}
 		}
 
