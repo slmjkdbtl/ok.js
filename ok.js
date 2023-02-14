@@ -1,4 +1,4 @@
-// wengwengweng
+// TODO: css in js solution
 
 window.ok = (() => {
 
@@ -84,9 +84,7 @@ function compileEl(obj) {
 			}
 		} else if (k === "dom") {
 			domReg[v] = el
-			cleanups.push(() => {
-				delete domReg[v]
-			})
+			cleanups.push(() => delete domReg[v])
 		} else {
 			el[k] = v
 		}
@@ -102,9 +100,8 @@ function compileEl(obj) {
 
 		if (val._isState) {
 			setProp(key, val.get())
-			cleanups.push(val.sub((data) => {
-				setProp(key, data)
-			}))
+			const sub = val.sub((data) => setProp(key, data))
+			cleanups.push(() => sub.cancel())
 		} else {
 			// static prop
 			setProp(key, val)
@@ -125,15 +122,14 @@ function compileEl(obj) {
 					}
 				}
 			} else {
-				el.textContent = children
+				el.innerHTML = children
 			}
 		}
 
 		if (obj.children._isState) {
 			setChildren(obj.children.get())
-			cleanups.push(obj.children.sub((data) => {
-				setChildren(data)
-			}))
+			const sub = obj.children.sub((data) => setChildren(data))
+			cleanups.push(() => sub.cancel())
 		} else {
 			// static children
 			setChildren(obj.children)
@@ -172,8 +168,7 @@ function state(data) {
 		_isState: true,
 		set(val) {
 			if (typeof val === "function") {
-				this.set(val(data))
-				return
+				return this.set(val(data))
 			}
 			data = val
 			this.pub()
@@ -181,16 +176,20 @@ function state(data) {
 		get() {
 			return data
 		},
-		sub(cb) {
+		sub(action) {
 			const id = lastSubID++
-			subs[id] = cb
-			return () => {
-				delete subs[id]
+			subs[id] = {
+				action: action,
+				cancel: () => delete subs[id],
+				active: true,
 			}
+			return subs[id]
 		},
 		pub() {
 			for (const id in subs) {
-				subs[id](data)
+				if (subs[id].active) {
+					subs[id].action(data)
+				}
 			}
 		},
 		map(f) {
@@ -212,9 +211,7 @@ function map(deps, action) {
 	const state2 = state(getValue())
 	for (const dep of deps) {
 		// TODO: clean up when state2 isn't around
-		dep.sub((data) => {
-			state2.set(getValue())
-		})
+		dep.sub((data) => state2.set(getValue()))
 	}
 	return state2
 }
