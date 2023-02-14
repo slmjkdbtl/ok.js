@@ -13,6 +13,7 @@ const {
 	css,
 	render,
 	state,
+	dbg,
 } = ok
 
 css({
@@ -99,6 +100,9 @@ function add() {
 }
 
 render(document.body, t("#app", {}, [
+	t("button", {
+		onclick: () => console.log(dbg.numSubs)
+	}, "subs count"),
 	t("#inputbar", {}, [
 		t("input", {
 			placeholder: "enter your new task",

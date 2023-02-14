@@ -2,8 +2,6 @@
 
 window.ok = (() => {
 
-const domReg = {}
-
 // comp def shortcut
 function t(tag, props, children) {
 	return {
@@ -61,16 +59,6 @@ function compileEl(obj) {
 
 	const cleanups = []
 
-	el._cleanup = () => {
-		[...el.children].forEach((c) => c._cleanup())
-		cleanups.forEach((cb) => cb())
-	}
-
-	el._destroy = () => {
-		el._cleanup()
-		el.remove()
-	}
-
 	function setProp(k, v) {
 		if (k === "classes") {
 			el.className = className
@@ -82,9 +70,6 @@ function compileEl(obj) {
 			for (const s in v) {
 				el.style.setProperty(s, v[s])
 			}
-		} else if (k === "dom") {
-			domReg[v] = el
-			cleanups.push(() => delete domReg[v])
 		} else {
 			el[k] = v
 		}
@@ -100,8 +85,7 @@ function compileEl(obj) {
 
 		if (val._isState) {
 			setProp(key, val.get())
-			const sub = val.sub((data) => setProp(key, data))
-			cleanups.push(() => sub.cancel())
+			cleanups.push(val.sub((data) => setProp(key, data)))
 		} else {
 			// static prop
 			setProp(key, val)
@@ -115,10 +99,10 @@ function compileEl(obj) {
 			const ty = typeof children
 			if (Array.isArray(children)) {
 				// TODO: list diff
-				[...el.children].forEach((c) => c._destroy())
+				[...el.children].forEach((c) => c.remove())
 				for (const child of children) {
 					if (child) {
-						render(el, child)
+						el.append(compileEl(child))
 					}
 				}
 			} else {
@@ -128,13 +112,17 @@ function compileEl(obj) {
 
 		if (obj.children._isState) {
 			setChildren(obj.children.get())
-			const sub = obj.children.sub((data) => setChildren(data))
-			cleanups.push(() => sub.cancel())
+			cleanups.push(obj.children.sub((data) => setChildren(data)))
 		} else {
 			// static children
 			setChildren(obj.children)
 		}
 
+	}
+
+	el._cleanup = () => {
+		[...el.children].forEach((c) => c._cleanup())
+		cleanups.forEach((cb) => cb())
 	}
 
 	return el
@@ -144,18 +132,27 @@ function compileEl(obj) {
 // render a vdom to dom
 function render(root, obj) {
 	if (Array.isArray(obj)) {
-		const cleanups = obj.map((o) => render(root, o))
-		return () => cleanups.forEach((cb) => cb())
+		obj.forEach((o) => render(root, o))
 	} else {
-		const el = compileEl(obj)
-		root.append(el)
-		return () => el._destroy()
+		root.append(compileEl(obj))
 	}
 }
 
-// internally managed shortcut to document.getElementByID
-function dom(name) {
-	return domReg[name]
+new MutationObserver((events) => {
+	events.forEach((e) => {
+		if (e.type !== "childList") {
+			return
+		}
+		for (const node of e.removedNodes) {
+			if (node._cleanup) {
+				node._cleanup()
+			}
+		}
+	})
+}).observe(document.body, { childList: true, subtree: true })
+
+const dbg = {
+	numSubs: 0,
 }
 
 // reactive state
@@ -177,19 +174,19 @@ function state(data) {
 			return data
 		},
 		sub(action) {
+			dbg.numSubs++
 			const id = lastSubID++
-			subs[id] = {
-				action: action,
-				cancel: () => delete subs[id],
-				active: true,
+			subs[id] = action
+			return () => {
+				if (subs[id]) {
+					delete subs[id]
+					dbg.numSubs--
+				}
 			}
-			return subs[id]
 		},
 		pub() {
 			for (const id in subs) {
-				if (subs[id].active) {
-					subs[id].action(data)
-				}
+				subs[id](data)
 			}
 		},
 		map(f) {
@@ -205,14 +202,18 @@ function state(data) {
 
 }
 
+function sub(deps, action) {
+	if (!Array.isArray(deps)) return sub([deps], action)
+	const onChange = () => action(...deps.map((dep) => dep.get()))
+	const cleanups = deps.map((dep) => dep.sub(onChange))
+	return () => cleanups.forEach((c) => c())
+}
+
 function map(deps, action) {
 	if (!Array.isArray(deps)) return map([deps], action)
-	const getValue = () => action(...deps.map((dep) => dep.get()))
-	const state2 = state(getValue())
-	for (const dep of deps) {
-		// TODO: clean up when state2 isn't around
-		dep.sub((data) => state2.set(getValue()))
-	}
+	const state2 = state(action(...deps.map((dep) => dep.get())))
+	// TODO: clean up when state2 isn't around
+	sub(deps, (...args) => state2.set(action(...args)))
 	return state2
 }
 
@@ -373,8 +374,8 @@ const uid = (() => {
 return {
 	t,
 	render,
-	dom,
 	state,
+	sub,
 	map,
 	css,
 	lstore,
@@ -382,6 +383,7 @@ return {
 	hash,
 	params,
 	uid,
+	dbg,
 }
 
 })()

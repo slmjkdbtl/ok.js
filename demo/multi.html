@@ -1,0 +1,35 @@
+<html>
+
+<head>
+	<title>counter</title>
+</head>
+
+<body>
+	<script src="../ok.js"></script>
+	<script>
+
+const {
+	t,
+	render,
+	state,
+	map,
+	sub,
+} = ok
+
+const counter = state(0)
+const input = state("clicks")
+
+render(document.body, [
+	t("button", {
+		onclick: () => counter.set((c) => c + 1),
+	}, map([counter, input], (c, i) => c + " " + i)),
+	t("input", {
+		value: input,
+		oninput: (e) => input.set(e.target.value)
+	}),
+])
+
+	</script>
+</body>
+
+</html>
