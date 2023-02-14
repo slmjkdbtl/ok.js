@@ -13,7 +13,7 @@ const {
 	css,
 	render,
 	state,
-} = ok;
+} = ok
 
 css({
 	"#app": {
@@ -51,51 +51,51 @@ css({
 			},
 		},
 	},
-});
+})
 
 const todos = state((() => {
 	if (localStorage["todo"]) {
 		return JSON.parse(localStorage["todo"]).map((item) => {
-			const done = state(item.done);
-			done.sub(save);
+			const done = state(item.done)
+			done.sub(save)
 			return {
 				title: item.title,
 				done: done,
-			};
-		});
+			}
+		})
 	} else {
-		return [];
+		return []
 	}
-})());
+})())
 
 function save() {
 	localStorage["todo"] = JSON.stringify(todos.get().map((item) => {
 		return {
 			title: item.title,
 			done: item.done.get(),
-		};
-	}));
+		}
+	}))
 }
 
 // TODO: deep sub
-todos.sub(save);
+todos.sub(save)
 
-const input = state("");
+const input = state("")
 
 function add() {
 	if (!input.get()) {
-		return;
+		return
 	}
-	const done = state(false);
-	done.sub(save);
+	const done = state(false)
+	done.sub(save)
 	todos.set([
 		...todos.get(),
 		{
 			title: input.get(),
 			done: done,
 		},
-	]);
-	input.set("");
+	])
+	input.set("")
 }
 
 render(document.body, t("#app", {}, [
@@ -103,14 +103,8 @@ render(document.body, t("#app", {}, [
 		t("input", {
 			placeholder: "enter your new task",
 			value: input,
-			onkeyup(e) {
-				if (e.key === "Enter") {
-					add();
-				}
-			},
-			oninput(e) {
-				input.set(e.target.value);
-			},
+			onkeyup: (e) => e.key === "Enter" && add(),
+			oninput: (e) => input.set(e.target.value)
 		}),
 		t("button", {
 			onclick: add,
@@ -122,25 +116,19 @@ render(document.body, t("#app", {}, [
 				t("input", {
 					type: "checkbox",
 					checked: item.done,
-					onchange(e) {
-						item.done.set(e.target.checked);
-					},
+					onchange: (e) => item.done.set(e.target.checked),
 				}),
 				t(".title", {
-					onclick() {
-						item.done.set((c) => !c);
-					},
+					onclick: () => item.done.set((c) => !c),
 					classes: item.done.map((c) => [ c && "crossed" ]),
 				}, item.title),
 			]),
 			t("button.delete", {
-				onclick() {
-					todos.set((t) => t.filter((_, idx2) => idx2 !== idx));
-				},
+				onclick: () => todos.set((t) => t.filter((_, idx2) => idx2 !== idx)),
 			}, "delete"),
-		]);
+		])
 	})),
-]));
+]))
 
 	</script>
 </body>

@@ -12,15 +12,13 @@ const {
 	t,
 	render,
 	state,
-} = ok;
+} = ok
 
-const counter = state(0);
+const counter = state(0)
 
 render(document.body, t("button", {
-	onclick() {
-		counter.set((c) => c + 1);
-	},
-}, counter.map((c) => c + " clicks")));
+	onclick: () => counter.set((c) => c + 1),
+}, counter.map((c) => c + " clicks")))
 
 	</script>
 </body>
