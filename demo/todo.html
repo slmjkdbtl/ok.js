@@ -9,10 +9,11 @@
 	<script>
 
 const {
-	t,
+	h,
 	css,
 	render,
 	signal,
+	dbg,
 } = ok
 
 css({
@@ -55,30 +56,15 @@ css({
 
 const todos = signal((() => {
 	if (localStorage["todo"]) {
-		return JSON.parse(localStorage["todo"]).map((item) => {
-			const done = signal(item.done)
-			done.sub(save)
-			return {
-				title: item.title,
-				done: done,
-			}
-		})
+		return JSON.parse(localStorage["todo"])
 	} else {
 		return []
 	}
 })())
 
 function save() {
-	localStorage["todo"] = JSON.stringify(todos.get().map((item) => {
-		return {
-			title: item.title,
-			done: item.done.get(),
-		}
-	}))
+	localStorage["todo"] = JSON.stringify(todos.get())
 }
-
-// TODO: deep sub
-todos.sub(save)
 
 const input = signal("")
 
@@ -86,45 +72,58 @@ function add() {
 	if (!input.get()) {
 		return
 	}
-	const done = signal(false)
-	done.sub(save)
 	todos.set([
 		...todos.get(),
 		{
 			title: input.get(),
-			done: done,
+			done: false,
 		},
 	])
 	input.set("")
 }
 
-render(document.body, t("#app", {}, [
-	t("#inputbar", {}, [
-		t("input", {
+render(document.body, h("#app", {}, [
+	h("button", {
+		onclick: () => console.log(dbg.numSubs),
+	}, "numsubs"),
+	h("#inputbar", {}, [
+		h("input", {
 			placeholder: "enter your new task",
 			value: input,
 			onkeyup: (e) => e.key === "Enter" && add(),
 			oninput: (e) => input.set(e.target.value)
 		}),
-		t("button", {
+		h("button", {
 			onclick: add,
 		}, "add"),
 	]),
-	t("#list", {}, todos.every((item, idx) => {
-		return t(".item", {}, [
-			t(".info", {}, [
-				t("input", {
+	h("#list", {}, todos.every((item, idx) => {
+		const done = signal(item.done)
+		return h(".item", {}, [
+			h(".info", {}, [
+				h("input", {
 					type: "checkbox",
-					checked: item.done,
-					onchange: (e) => item.done.set(e.target.checked),
+					checked: done,
+					onchange: (e) => {
+						done.set(e.target.checked)
+						item.done = done.get()
+						save()
+					},
 				}),
-				t(".title", {
-					onclick: () => item.done.set((c) => !c),
-					classes: item.done.map((c) => [ c && "crossed" ]),
+				h(".title", {
+					onclick: () => {
+						done.set((c) => !c)
+						item.done = done.get()
+						save()
+					},
+					classes: done.map((c) => [ c && "crossed" ]),
 				}, item.title),
 			]),
-			t("button.delete", {
-				onclick: () => todos.set((t) => t.filter((_, idx2) => idx2 !== idx)),
+			h("button.delete", {
+				onclick: () => {
+					todos.set((t) => t.filter((_, idx2) => idx2 !== idx))
+					save()
+				},
 			}, "delete"),
 		])
 	})),

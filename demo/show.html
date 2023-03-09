@@ -9,7 +9,7 @@
 	<script>
 
 const {
-	t,
+	h,
 	render,
 	signal,
 } = ok
@@ -19,7 +19,7 @@ const counter = signal(0)
 
 const block = () => {
 	const label = counter.map((c) => `${c} clicks`)
-	return t("div", {
+	return h("div", {
 		styles: {
 			"width": "200px",
 			"height": "200px",
@@ -31,13 +31,13 @@ const block = () => {
 }
 
 render(document.body, [
-	t("button", {
-		onclick: () => alert(counter.numSubs()),
+	h("button", {
+		onclick: () => console.log(counter.numSubs()),
 	}, "numsubs"),
-	t("button", {
+	h("button", {
 		onclick: () => show.set((s) => !s),
 	}, show.map((s) => s ? "hide" : "show")),
-	t("div", {}, show.map((s) => s ? [block()] : []))
+	h("div", {}, show.map((s) => s ? [block()] : [])),
 ])
 
 	</script>

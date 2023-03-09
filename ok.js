@@ -3,7 +3,7 @@
 window.ok = (() => {
 
 // comp def shortcut
-function t(tag, props, children) {
+function h(tag, props, children) {
 	return {
 		tag,
 		props,
@@ -154,7 +154,9 @@ new MutationObserver((events) => {
 	})
 }).observe(document.body, { childList: true, subtree: true })
 
-const dbg = {}
+const dbg = {
+	numSubs: 0,
+}
 
 // reactive state
 function signal(data) {
@@ -175,9 +177,13 @@ function signal(data) {
 			return data
 		},
 		sub(action) {
+			dbg.numSubs++
 			const id = lastSubID++
 			subs[id] = action
-			return () => delete subs[id]
+			return () => {
+				dbg.numSubs--
+				delete subs[id]
+			}
 		},
 		pub() {
 			for (const id in subs) {
@@ -207,33 +213,22 @@ function sub(deps, action) {
 	return () => cleanups.forEach((c) => c())
 }
 
-// TODO: clean
 function map(deps, action) {
+
 	if (!Array.isArray(deps)) return map([deps], action)
 
 	const subs = {}
 	let lastSubID = 0
-	let data = null
 	let unsubDep = null
 
 	return {
 		_isSignal: true,
-		set() {
-			// TODO: should remove the dep
-		},
 		get() {
-			if (this.numSubs() === 0) {
-				data = action(...deps.map((dep) => dep.get()))
-			}
-			return data
+			return action(...deps.map((dep) => dep.get()))
 		},
 		sub(action2) {
 			if (this.numSubs() === 0) {
-				data = action(...deps.map((dep) => dep.get()))
-				unsubDep = sub(deps, (...args) => {
-					data = action(...args)
-					this.pub()
-				})
+				unsubDep = sub(deps, () => this.pub())
 			}
 			const id = lastSubID++
 			subs[id] = action2
@@ -253,16 +248,12 @@ function map(deps, action) {
 			return map(this, f)
 		},
 		every(f) {
-			if (!Array.isArray(data)) {
-				throw new Error(`every() only exists on arrays, found ${typeof data}`)
-			}
 			return this.map((data2) => data2.map(f))
 		},
 		numSubs() {
 			return Object.keys(subs).length
 		},
 	}
-
 
 }
 
@@ -421,7 +412,7 @@ const uid = (() => {
 })()
 
 return {
-	t,
+	h,
 	render,
 	signal,
 	sub,

@@ -9,7 +9,7 @@
 	<script>
 
 const {
-	t,
+	h,
 	render,
 	signal,
 	map,
@@ -20,10 +20,10 @@ const counter = signal(0)
 const input = signal("clicks")
 
 render(document.body, [
-	t("button", {
+	h("button", {
 		onclick: () => counter.set((c) => c + 1),
 	}, map([counter, input], (c, i) => c + " " + i)),
-	t("input", {
+	h("input", {
 		value: input,
 		oninput: (e) => input.set(e.target.value)
 	}),
