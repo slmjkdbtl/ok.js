@@ -1,0 +1,46 @@
+<html>
+
+<head>
+	<title>counter</title>
+</head>
+
+<body>
+	<script src="../ok.js"></script>
+	<script>
+
+const {
+	t,
+	render,
+	signal,
+} = ok
+
+const show = signal(false)
+const counter = signal(0)
+
+const block = () => {
+	const label = counter.map((c) => `${c} clicks`)
+	return t("div", {
+		styles: {
+			"width": "200px",
+			"height": "200px",
+			"background": "yellow",
+			"user-select": "none",
+		},
+		onclick: () => counter.set((c) => c + 1)
+	}, label)
+}
+
+render(document.body, [
+	t("button", {
+		onclick: () => alert(counter.numSubs()),
+	}, "numsubs"),
+	t("button", {
+		onclick: () => show.set((s) => !s),
+	}, show.map((s) => s ? "hide" : "show")),
+	t("div", {}, show.map((s) => s ? [block()] : []))
+])
+
+	</script>
+</body>
+
+</html>

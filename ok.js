@@ -60,7 +60,9 @@ function compileEl(obj) {
 	const cleanups = []
 
 	function setProp(k, v) {
-		if (k === "classes") {
+		if (k.toLowerCase() === "oncleanup") {
+			cleanups.push(v)
+		} else if (k === "classes") {
 			el.className = className
 			const names = v.filter(c => c).join(" ")
 			if (names) {
@@ -83,7 +85,7 @@ function compileEl(obj) {
 			continue
 		}
 
-		if (val._isState) {
+		if (val._isSignal) {
 			setProp(key, val.get())
 			cleanups.push(val.sub((data) => setProp(key, data)))
 		} else {
@@ -110,7 +112,8 @@ function compileEl(obj) {
 			}
 		}
 
-		if (obj.children._isState) {
+		// TODO: accept one children is signal
+		if (obj.children._isSignal) {
 			setChildren(obj.children.get())
 			cleanups.push(obj.children.sub((data) => setChildren(data)))
 		} else {
@@ -151,18 +154,16 @@ new MutationObserver((events) => {
 	})
 }).observe(document.body, { childList: true, subtree: true })
 
-const dbg = {
-	numSubs: 0,
-}
+const dbg = {}
 
 // reactive state
-function state(data) {
+function signal(data) {
 
 	const subs = {}
 	let lastSubID = 0
 
 	return {
-		_isState: true,
+		_isSignal: true,
 		set(val) {
 			if (typeof val === "function") {
 				return this.set(val(data))
@@ -174,15 +175,9 @@ function state(data) {
 			return data
 		},
 		sub(action) {
-			dbg.numSubs++
 			const id = lastSubID++
 			subs[id] = action
-			return () => {
-				if (subs[id]) {
-					delete subs[id]
-					dbg.numSubs--
-				}
-			}
+			return () => delete subs[id]
 		},
 		pub() {
 			for (const id in subs) {
@@ -198,6 +193,9 @@ function state(data) {
 			}
 			return this.map((data2) => data2.map(f))
 		},
+		numSubs() {
+			return Object.keys(subs).length
+		},
 	}
 
 }
@@ -209,12 +207,63 @@ function sub(deps, action) {
 	return () => cleanups.forEach((c) => c())
 }
 
+// TODO: clean
 function map(deps, action) {
 	if (!Array.isArray(deps)) return map([deps], action)
-	const state2 = state(action(...deps.map((dep) => dep.get())))
-	// TODO: clean up when state2 isn't around
-	sub(deps, (...args) => state2.set(action(...args)))
-	return state2
+
+	const subs = {}
+	let lastSubID = 0
+	let data = null
+	let unsubDep = null
+
+	return {
+		_isSignal: true,
+		set() {
+			// TODO: should remove the dep
+		},
+		get() {
+			if (this.numSubs() === 0) {
+				data = action(...deps.map((dep) => dep.get()))
+			}
+			return data
+		},
+		sub(action2) {
+			if (this.numSubs() === 0) {
+				data = action(...deps.map((dep) => dep.get()))
+				unsubDep = sub(deps, (...args) => {
+					data = action(...args)
+					this.pub()
+				})
+			}
+			const id = lastSubID++
+			subs[id] = action2
+			return () => {
+				delete subs[id]
+				if (this.numSubs() === 0) {
+					unsubDep()
+				}
+			}
+		},
+		pub() {
+			for (const id in subs) {
+				subs[id](this.get())
+			}
+		},
+		map(f) {
+			return map(this, f)
+		},
+		every(f) {
+			if (!Array.isArray(data)) {
+				throw new Error(`every() only exists on arrays, found ${typeof data}`)
+			}
+			return this.map((data2) => data2.map(f))
+		},
+		numSubs() {
+			return Object.keys(subs).length
+		},
+	}
+
+
 }
 
 // compile sass-like js obj def to css string
@@ -374,7 +423,7 @@ const uid = (() => {
 return {
 	t,
 	render,
-	state,
+	signal,
 	sub,
 	map,
 	css,

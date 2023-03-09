@@ -12,8 +12,7 @@ const {
 	t,
 	css,
 	render,
-	state,
-	dbg,
+	signal,
 } = ok
 
 css({
@@ -54,10 +53,10 @@ css({
 	},
 })
 
-const todos = state((() => {
+const todos = signal((() => {
 	if (localStorage["todo"]) {
 		return JSON.parse(localStorage["todo"]).map((item) => {
-			const done = state(item.done)
+			const done = signal(item.done)
 			done.sub(save)
 			return {
 				title: item.title,
@@ -81,13 +80,13 @@ function save() {
 // TODO: deep sub
 todos.sub(save)
 
-const input = state("")
+const input = signal("")
 
 function add() {
 	if (!input.get()) {
 		return
 	}
-	const done = state(false)
+	const done = signal(false)
 	done.sub(save)
 	todos.set([
 		...todos.get(),
@@ -100,9 +99,6 @@ function add() {
 }
 
 render(document.body, t("#app", {}, [
-	t("button", {
-		onclick: () => console.log(dbg.numSubs)
-	}, "subs count"),
 	t("#inputbar", {}, [
 		t("input", {
 			placeholder: "enter your new task",

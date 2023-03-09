@@ -11,10 +11,10 @@
 const {
 	t,
 	render,
-	state,
+	signal,
 } = ok
 
-const counter = state(0)
+const counter = signal(0)
 
 render(document.body, t("button", {
 	onclick: () => counter.set((c) => c + 1),

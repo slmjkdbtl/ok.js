@@ -11,13 +11,13 @@
 const {
 	t,
 	render,
-	state,
+	signal,
 	map,
 	sub,
 } = ok
 
-const counter = state(0)
-const input = state("clicks")
+const counter = signal(0)
+const input = signal("clicks")
 
 render(document.body, [
 	t("button", {
