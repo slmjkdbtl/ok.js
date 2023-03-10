@@ -14,11 +14,11 @@ const {
 	signal,
 } = ok
 
-const counter = signal(0)
+const [counter, setCounter] = signal(0)
 
 render(document.body, h("button", {
-	onclick: () => counter.set((c) => c + 1),
-}, counter.map((c) => c + " clicks")))
+	onclick: () => setCounter(counter() + 1),
+}, () => `${counter()} clicks`))
 
 	</script>
 </body>

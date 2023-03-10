@@ -12,20 +12,18 @@ const {
 	h,
 	render,
 	signal,
-	map,
-	sub,
 } = ok
 
-const counter = signal(0)
-const input = signal("clicks")
+const [counter, setCounter] = signal(0)
+const [input, setInput] = signal("clicks")
 
 render(document.body, [
 	h("button", {
-		onclick: () => counter.set((c) => c + 1),
-	}, map([counter, input], (c, i) => c + " " + i)),
+		onclick: () => setCounter(counter() + 1),
+	}, () => `${counter()} ${input()}`),
 	h("input", {
 		value: input,
-		oninput: (e) => input.set(e.target.value)
+		oninput: (e) => setInput(e.target.value)
 	}),
 ])
 

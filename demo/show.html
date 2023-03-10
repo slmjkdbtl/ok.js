@@ -14,11 +14,10 @@ const {
 	signal,
 } = ok
 
-const show = signal(false)
-const counter = signal(0)
+const [show, setShow] = signal(false)
+const [counter, setCounter] = signal(0)
 
 const block = () => {
-	const label = counter.map((c) => `${c} clicks`)
 	return h("div", {
 		styles: {
 			"width": "200px",
@@ -26,18 +25,15 @@ const block = () => {
 			"background": "yellow",
 			"user-select": "none",
 		},
-		onclick: () => counter.set((c) => c + 1)
-	}, label)
+		onclick: () => setCounter(counter() + 1)
+	}, () => `${counter()} clicks`)
 }
 
 render(document.body, [
 	h("button", {
-		onclick: () => console.log(counter.numSubs()),
-	}, "numsubs"),
-	h("button", {
-		onclick: () => show.set((s) => !s),
-	}, show.map((s) => s ? "hide" : "show")),
-	h("div", {}, show.map((s) => s ? [block()] : [])),
+		onclick: () => setShow(!show()),
+	}, (() => show() ? "hide" : "show")),
+	h("div", {}, () => show() ? [block()] : []),
 ])
 
 	</script>

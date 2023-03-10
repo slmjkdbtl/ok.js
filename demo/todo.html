@@ -54,7 +54,7 @@ css({
 	},
 })
 
-const todos = signal((() => {
+const [todos, setTodos] = signal((() => {
 	if (localStorage["todo"]) {
 		return JSON.parse(localStorage["todo"])
 	} else {
@@ -63,65 +63,63 @@ const todos = signal((() => {
 })())
 
 function save() {
-	localStorage["todo"] = JSON.stringify(todos.get())
+	localStorage["todo"] = JSON.stringify(todos())
 }
 
-const input = signal("")
+const [input, setInput] = signal("")
 
 function add() {
-	if (!input.get()) {
+	if (!input()) {
 		return
 	}
-	todos.set([
-		...todos.get(),
+	setTodos([
+		...todos(),
 		{
-			title: input.get(),
+			title: input(),
 			done: false,
 		},
 	])
-	input.set("")
+	setInput("")
+	save()
 }
 
 render(document.body, h("#app", {}, [
-	h("button", {
-		onclick: () => console.log(dbg.numSubs),
-	}, "numsubs"),
 	h("#inputbar", {}, [
 		h("input", {
 			placeholder: "enter your new task",
 			value: input,
 			onkeyup: (e) => e.key === "Enter" && add(),
-			oninput: (e) => input.set(e.target.value)
+			oninput: (e) => setInput(e.target.value)
 		}),
 		h("button", {
 			onclick: add,
 		}, "add"),
 	]),
-	h("#list", {}, todos.every((item, idx) => {
-		const done = signal(item.done)
+	h("#list", {}, () => todos().map((item, idx) => {
+		const [done, setDone] = signal(item.done)
 		return h(".item", {}, [
 			h(".info", {}, [
 				h("input", {
 					type: "checkbox",
 					checked: done,
 					onchange: (e) => {
-						done.set(e.target.checked)
-						item.done = done.get()
+						setDone(e.target.checked)
+						item.done = done()
 						save()
 					},
 				}),
 				h(".title", {
 					onclick: () => {
-						done.set((c) => !c)
-						item.done = done.get()
+						setDone((c) => !c)
+						item.done = done()
 						save()
 					},
-					classes: done.map((c) => [ c && "crossed" ]),
+					classes: () => [ done() && "crossed" ],
 				}, item.title),
 			]),
 			h("button.delete", {
 				onclick: () => {
-					todos.set((t) => t.filter((_, idx2) => idx2 !== idx))
+					setTodos((t) => t.filter((_, idx2) => idx2 !== idx))
 					save()
 				},
 			}, "delete"),
